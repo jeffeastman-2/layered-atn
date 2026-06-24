@@ -9,7 +9,7 @@ CAD grammar, but it discards partial parses a domain consumer may still want:
 e.g. an imperative whose trailing material didn't fully fold into the SP, or
 verbose prose with one well-formed clause.
 
-EngrafSPPolicy below preserves that strict behavior verbatim (and is the
+StrictSPPolicy below preserves that strict behavior verbatim (and is the
 default, so Engraf is unaffected). A consumer (Driftmoor) can activate
 PermissiveSPPolicy so a hypothesis survives whenever it produced at least one
 sentence phrase, even with leftover tokens -- the SP-level counterpart to
@@ -34,7 +34,7 @@ class SPGroundingPolicy(Protocol):
         ...
 
 
-class EngrafSPPolicy:
+class StrictSPPolicy:
     """Engraf's complete-sentence rule: keep a hypothesis only if it produced
     at least one sentence phrase AND every token folded into one (no leftover
     non-SP tokens). Behavior-preserving for the previous hardcoded
@@ -63,7 +63,7 @@ def get_active_sp_policy() -> SPGroundingPolicy:
     set_active_sp_policy / use_sp_policy take effect."""
     global _active
     if _active is None:
-        _active = EngrafSPPolicy()
+        _active = StrictSPPolicy()
     return _active
 
 
@@ -94,7 +94,7 @@ class use_sp_policy:
 
 __all__ = [
     "SPGroundingPolicy",
-    "EngrafSPPolicy",
+    "StrictSPPolicy",
     "PermissiveSPPolicy",
     "get_active_sp_policy",
     "set_active_sp_policy",

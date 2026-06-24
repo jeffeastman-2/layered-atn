@@ -56,7 +56,7 @@ class Layer5SemanticGrounder:
             # Extract the sentence phrases this hypothesis produced, and note
             # whether EVERY token folded into one (no leftover non-SP tokens).
             # The keep/reject verdict belongs to the active SP policy:
-            # EngrafSPPolicy demands full coverage (strict, default);
+            # StrictSPPolicy demands full coverage (strict, default);
             # PermissiveSPPolicy keeps any hypothesis with >= 1 SP.
             sentence_phrases = []
             all_tokens_are_sp = True

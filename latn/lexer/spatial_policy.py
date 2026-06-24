@@ -13,7 +13,7 @@ Both spatial predicates -- the dot-product sign test for spatial_location
 (near/at/in/on) -- now live behind a SpatialPolicy. Driftmoor can swap
 in its own (zone-aware, LOS-aware, etc.) without touching the LATN.
 
-EngrafSpatialPolicy is the prior validate_single_relationship body moved
+StrictSpatialPolicy is the prior validate_single_relationship body moved
 verbatim -> behavior-preserving by default (threshold=1.0). The proximity
 threshold is a constructor parameter for trivial overrides; for non-
 distance proximity semantics, write a different SpatialPolicy.
@@ -37,14 +37,14 @@ class SpatialPolicy(Protocol):
         ...
 
 
-class EngrafSpatialPolicy:
+class StrictSpatialPolicy:
     """Engraf's default spatial predicates. Verbatim move of the former
     SpatialValidator.validate_single_relationship, including its defensive
     broad-except (preserves behavior on malformed inputs).
 
     `proximity_threshold` is in the world's coordinate units; the default
     1.0 matches Engraf's prior baked-in literal. Driftmoor in feet might
-    use `EngrafSpatialPolicy(proximity_threshold=30.0)`.
+    use `StrictSpatialPolicy(proximity_threshold=30.0)`.
     """
 
     def __init__(self, proximity_threshold: float = 1.0):
@@ -96,7 +96,7 @@ def get_active_spatial_policy() -> SpatialPolicy:
     effect."""
     global _active
     if _active is None:
-        _active = EngrafSpatialPolicy()
+        _active = StrictSpatialPolicy()
     return _active
 
 
@@ -127,7 +127,7 @@ class use_spatial_policy:
 
 __all__ = [
     "SpatialPolicy",
-    "EngrafSpatialPolicy",
+    "StrictSpatialPolicy",
     "PermissiveSpatialPolicy",
     "get_active_spatial_policy",
     "set_active_spatial_policy",

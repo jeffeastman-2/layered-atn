@@ -1,5 +1,5 @@
 # layered-atn
-LATN (Layered ATN) parses natural language through staged augmented transition networks — tokenize → noun / prepositional / verb phrases → sentence — scoring competing hypotheses in a vector-space semantic model. It's host-agnostic by design, with three injection seams: the host supplies its own lexicon (vocabulary), extends the base 70-dimensional vector-space schema (the semantic axes the model reasons over), and provides a SceneAdapter that grounds phrases to real entities in the host's world model — with pluggable grounding policies controlling how strict that matching is. The result is grounded, structured intent, not just a parse tree.
+LATN (Layered ATN) parses natural language through staged augmented transition networks — tokenize → noun / prepositional / verb phrases → sentence — scoring competing hypotheses in a vector-space semantic model. It's host-agnostic by design: the host configures it through two substrate seams — its own lexicon (vocabulary) and extra axes on the base 70-dimensional vector-space schema (the semantic dimensions the model reasons over) — plus a grounding seam at each layer: a SceneAdapter resolves noun phrases to entities in the host's world, while strict-or-permissive policies govern how prepositional, verb, and sentence phrases bind. The result is grounded, structured intent, not just a parse tree.
 
 ## The layers
 
@@ -15,29 +15,36 @@ Each layer tokenizes and grounds on top of the one below; higher layers fold the
 lower phrases into composite tokens, carrying a semantic vector through the whole
 stack and keeping multiple hypotheses alive until grounding resolves them.
 
-## The three seams
+## The seams
+
+A host plugs into LATN through two **substrate** seams and a family of
+**per-layer grounding** seams — none of which require LATN to know anything
+domain-specific.
+
+### Substrate
 
 | Seam | What the host supplies | Entry point |
 |------|------------------------|-------------|
 | Lexicon | its vocabulary (words → feature vectors), activated per parse | `latn.lexer.lexicon` — `Lexicon`, `use_lexicon` |
-| Vector-space dimension schema | extra semantic axes on top of the 70 base dims | `latn.An_N_Space_Model.vector_dimensions` — `register_dimensions` |
-| Scene adapter | grounding of phrases to real entities | `latn.lexer.scene_adapter` — `SceneAdapter`, `GroundedEntity` |
+| Dimension schema | extra semantic axes on top of the 70 base dims | `latn.An_N_Space_Model.vector_dimensions` — `register_dimensions` |
 
-## Grounding policies
+### Grounding — one seam per grounding layer
 
-A fourth, *behavioral* seam: injectable strictness for each grounding layer,
-swappable per parse via the `use_*` context managers.
+| Layer | Grounding seam | Entry point |
+|-------|----------------|-------------|
+| L2 — noun phrases | **`SceneAdapter`** (the host's world bridge) | `latn.lexer.scene_adapter` — `SceneAdapter`, `GroundedEntity` |
+| L3 — PP / spatial | `SpatialPolicy` | `StrictSpatialPolicy`, `PermissiveSpatialPolicy`, `use_spatial_policy` |
+| L4 — verb phrases | `VPGroundingPolicy` | `StrictVPPolicy`, `PermissiveVPPolicy`, `use_vp_policy` |
+| L5 — sentence phrases | `SPGroundingPolicy` | `StrictSPPolicy`, `PermissiveSPPolicy`, `use_sp_policy` |
 
-| Policy | Layer it governs | Entry point |
-|--------|------------------|-------------|
-| `spatial_policy` | PP / spatial relations (L3) | `SpatialPolicy`, `EngrafSpatialPolicy`, `use_spatial_policy` |
-| `vp_policy` | verb phrases (L4) | `VPGroundingPolicy`, `PermissiveVPPolicy`, `use_vp_policy` |
-| `sp_policy` | sentence phrases (L5) | `SPGroundingPolicy`, `PermissiveSPPolicy`, `use_sp_policy` |
-
-Each toggles **fail-closed** (reject ungrounded phrases) vs **permissive**. A host
-mixes them to taste — e.g. Driftmoor runs permissive VP + SP so it can extract a
-verb phrase even when full sentence grounding would reject it, then grounds
-through its own scene adapter.
+Two shapes within the family. The **NP seam is a resolver**: the `SceneAdapter`
+the host implements *is* the bridge to its entities (`resolve_noun_phrase`,
+`resolve_pronoun`), and it is required. The **L3–L5 seams are filters**: thin,
+swappable policies that toggle **fail-closed** (reject ungrounded phrases) vs
+**permissive**, each with a strict default. A host mixes them to taste — e.g.
+Driftmoor runs permissive VP + SP so it can extract a verb phrase even when full
+sentence grounding would reject it, then grounds noun phrases through its own
+`SceneAdapter`.
 
 ## Install
 

@@ -2,7 +2,7 @@
 
 Phase-1 seam 3b of factoring the LATN core out of Engraf. Layer-4's
 verb-phrase validation is the one place the dimension *ontology* becomes
-branching logic: EngrafVPPolicy below is keyed to the CAD verb-intent
+branching logic: StrictVPPolicy below is keyed to the CAD verb-intent
 dimensions (create/style/move/rotate/scale/organize/edit/select/naming/
 tobe) and is FAIL-CLOSED -- its final `return False` rejects any VP that
 activates none of those. A Driftmoor verb phrase ("shoot an arrow at the
@@ -10,7 +10,7 @@ shadowbeast") activates no CAD dim, so under the Engraf policy L4 would
 reject every Driftmoor VP. Making the policy injectable is therefore the
 NON-deferrable half of seam #3 (unlike #3a, the dimension schema).
 
-EngrafVPPolicy is the previous Layer4SemanticGrounder.validate_vp /
+StrictVPPolicy is the previous Layer4SemanticGrounder.validate_vp /
 validate_vp_with_np logic, moved here verbatim -> behavior-preserving for
 Engraf. Driftmoor supplies its own policy (or PermissiveVPPolicy) so its
 verb phrases survive L4 and reach the DM adjudicator.
@@ -32,7 +32,7 @@ class VPGroundingPolicy(Protocol):
         ...
 
 
-class EngrafVPPolicy:
+class StrictVPPolicy:
     """Engraf's CAD verb-phrase rules. Verbatim move of the former
     Layer4SemanticGrounder.validate_vp / validate_vp_with_np. Fail-closed."""
 
@@ -159,7 +159,7 @@ def get_active_vp_policy() -> VPGroundingPolicy:
     set_active_vp_policy / use_vp_policy take effect."""
     global _active
     if _active is None:
-        _active = EngrafVPPolicy()
+        _active = StrictVPPolicy()
     return _active
 
 
@@ -190,7 +190,7 @@ class use_vp_policy:
 
 __all__ = [
     "VPGroundingPolicy",
-    "EngrafVPPolicy",
+    "StrictVPPolicy",
     "PermissiveVPPolicy",
     "get_active_vp_policy",
     "set_active_vp_policy",
