@@ -21,7 +21,23 @@ stack and keeping multiple hypotheses alive until grounding resolves them.
 |------|------------------------|-------------|
 | Lexicon | its vocabulary (words → feature vectors), activated per parse | `latn.lexer.lexicon` — `Lexicon`, `use_lexicon` |
 | Vector-space dimension schema | extra semantic axes on top of the 70 base dims | `latn.An_N_Space_Model.vector_dimensions` — `register_dimensions` |
-| Scene adapter | grounding of phrases to real entities (+ grounding policies) | `latn.lexer.scene_adapter` — `SceneAdapter`, `GroundedEntity` |
+| Scene adapter | grounding of phrases to real entities | `latn.lexer.scene_adapter` — `SceneAdapter`, `GroundedEntity` |
+
+## Grounding policies
+
+A fourth, *behavioral* seam: injectable strictness for each grounding layer,
+swappable per parse via the `use_*` context managers.
+
+| Policy | Layer it governs | Entry point |
+|--------|------------------|-------------|
+| `spatial_policy` | PP / spatial relations (L3) | `SpatialPolicy`, `EngrafSpatialPolicy`, `use_spatial_policy` |
+| `vp_policy` | verb phrases (L4) | `VPGroundingPolicy`, `PermissiveVPPolicy`, `use_vp_policy` |
+| `sp_policy` | sentence phrases (L5) | `SPGroundingPolicy`, `PermissiveSPPolicy`, `use_sp_policy` |
+
+Each toggles **fail-closed** (reject ungrounded phrases) vs **permissive**. A host
+mixes them to taste — e.g. Driftmoor runs permissive VP + SP so it can extract a
+verb phrase even when full sentence grounding would reject it, then grounds
+through its own scene adapter.
 
 ## Install
 
