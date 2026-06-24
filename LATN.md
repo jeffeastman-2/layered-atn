@@ -286,12 +286,14 @@ achieves:
 -   **Grounding** --- meaning connects directly to Scene Objects
 -   **Infinite‑Context Behavior** --- memory lives in the world model
 
-The reference implementation is validated by a comprehensive unit-test
-suite (~280 LATN tests, currently maintained in the Engraf host
-repository) covering lexical analysis, phrase extraction, grounding
-logic, spatial reasoning, and end-to-end sentence interpretation. This
-suite keeps the modular architecture robust as new capabilities are
-added.
+LATN ships its own unit-test suite---193 tests covering lexical analysis,
+phrase extraction across the layers, and the injection seams (lexicon,
+dimension schema, and grounding policies)---plus an enforced import
+boundary that keeps the package free of host dependencies. Grounding,
+spatial reasoning, and end-to-end interpretation are exercised against
+concrete scene adapters in the host repositories (Engraf and Driftmoor),
+since those tests require a populated world. Together they keep the
+modular architecture robust as new capabilities are added.
 
 LATN is not positioned as a replacement for transformer-based models but
 as a complementary architecture suitable for *hybrid neuro‑symbolic
