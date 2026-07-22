@@ -63,7 +63,7 @@ class VerbPhrase():
         debug_print(f"✅ Current adjective complements: {self.adjective_complements}")
 
     def is_imperative(self):
-        return self.vector.scalar_projection("action") > 0.5
+        return self.vector.isa("verb") and not self.vector.isa("tobe")
 
     def verb_has_intent(self, intent: str, threshold=0.5) -> bool:
         return self.verb and self.verb.scalar_projection(intent) > threshold

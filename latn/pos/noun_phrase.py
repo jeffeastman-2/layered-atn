@@ -26,7 +26,7 @@ class NounPhrase():
         self._grounding = value
 
     def apply_determiner(self, tok):
-        self.is_unit = self.is_unit or tok.isa("unit") 
+        self.is_unit = self.is_unit or tok.isa("measure")
         self.determiner = tok.word
         self.vector += tok
         self.consumed_tokens.append(tok)
@@ -81,7 +81,7 @@ class NounPhrase():
                 debug_print(f"❌ {error_msg}")
                 raise ValueError(error_msg)
         
-        self.is_unit = self.is_unit or tok.isa("unit") or tok.isa("vector")
+        self.is_unit = self.is_unit or tok.isa("measure") or tok.isa("literal")
         self.noun = tok.word
         self.vector += tok
         self.consumed_tokens.append(tok)

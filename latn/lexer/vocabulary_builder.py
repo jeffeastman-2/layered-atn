@@ -54,9 +54,10 @@ def vector_from_word(word: str) -> VectorSpace:
                 multiplier = 1.5  # stronger boost for superlatives
             
             if v["adj"] > 0:
-                # Scale semantic features differently for comparative vs superlative
-                semantic_features = ["scaleX", "scaleY", "scaleZ", "red", "green", "blue", "texture", "transparency"]
-                for key in semantic_features:
+                # Scale whatever executable semantic axes the host registered;
+                # LATN has no knowledge of their names or meanings.
+                from latn.An_N_Space_Model.vector_dimensions import SEMANTIC_DIMENSIONS
+                for key in SEMANTIC_DIMENSIONS:
                     if v[key] != 0:
                         v[key] = v[key] * multiplier
             return v

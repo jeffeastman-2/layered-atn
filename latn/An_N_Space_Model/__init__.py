@@ -1,2 +1,2 @@
 # An N-Space Model package
-# Contains the core vocabulary and vector dimension definitions for ENGRAF
+# Host-neutral LATN grammar dimensions and closed-class vocabulary.

@@ -74,7 +74,7 @@ def get_active_lexicon() -> Lexicon:
 
 
 def set_active_lexicon(lexicon: Optional[Lexicon]) -> None:
-    """Swap the active lexicon. Pass None to reset to the Engraf default."""
+    """Swap the active lexicon. Pass None to reset to core function words."""
     global _active
     _active = lexicon
 

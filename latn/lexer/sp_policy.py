@@ -1,22 +1,4 @@
-"""Injectable Layer-5 sentence-phrase grounding policy.
-
-The Layer-5 analog of vp_policy. Layer-5's ``ground_layer5`` decides which
-tokenization hypotheses survive as "sentences". Engraf's rule is FAIL-CLOSED
-at the hypothesis level: a hypothesis grounds only if EVERY token collapsed
-into a sentence phrase (or a conjunction of them) -- any leftover non-SP token
-rejects the whole hypothesis. That is right for Engraf's complete-utterance
-CAD grammar, but it discards partial parses a domain consumer may still want:
-e.g. an imperative whose trailing material didn't fully fold into the SP, or
-verbose prose with one well-formed clause.
-
-StrictSPPolicy below preserves that strict behavior verbatim (and is the
-default, so Engraf is unaffected). A consumer (Driftmoor) can activate
-PermissiveSPPolicy so a hypothesis survives whenever it produced at least one
-sentence phrase, even with leftover tokens -- the SP-level counterpart to
-PermissiveVPPolicy. The consumer then uses the SP structure where it formed
-and can fall back to the lower-layer VP elsewhere, instead of losing the
-parse outright.
-"""
+"""Host policy seam for Layer-5 sentence-phrase acceptance."""
 
 from typing import List, Optional, Protocol, runtime_checkable
 
@@ -32,17 +14,6 @@ class SPGroundingPolicy(Protocol):
     def accept_hypothesis(self, sentence_phrases: List[SentencePhrase],
                           all_tokens_are_sp: bool) -> bool:
         ...
-
-
-class StrictSPPolicy:
-    """Engraf's complete-sentence rule: keep a hypothesis only if it produced
-    at least one sentence phrase AND every token folded into one (no leftover
-    non-SP tokens). Behavior-preserving for the previous hardcoded
-    ground_layer5 logic."""
-
-    def accept_hypothesis(self, sentence_phrases: List[SentencePhrase],
-                          all_tokens_are_sp: bool) -> bool:
-        return bool(sentence_phrases) and all_tokens_are_sp
 
 
 class PermissiveSPPolicy:
@@ -63,12 +34,12 @@ def get_active_sp_policy() -> SPGroundingPolicy:
     set_active_sp_policy / use_sp_policy take effect."""
     global _active
     if _active is None:
-        _active = StrictSPPolicy()
+        _active = PermissiveSPPolicy()
     return _active
 
 
 def set_active_sp_policy(policy: Optional[SPGroundingPolicy]) -> None:
-    """Swap the active policy. Pass None to reset to the Engraf default."""
+    """Swap the active policy. Pass None to reset to the neutral default."""
     global _active
     _active = policy
 
@@ -94,7 +65,6 @@ class use_sp_policy:
 
 __all__ = [
     "SPGroundingPolicy",
-    "StrictSPPolicy",
     "PermissiveSPPolicy",
     "get_active_sp_policy",
     "set_active_sp_policy",

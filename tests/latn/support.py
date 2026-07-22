@@ -113,6 +113,9 @@ class TestSpatialPolicy:
 
     __test__ = False
 
+    def applies_to(self, pp_token) -> bool:
+        return pp_token.isa("test_relation")
+
     def validate(self, pp_token, obj1, obj2) -> bool:
         return bool(pp_token.isa("test_relation"))
 

@@ -126,7 +126,8 @@ def process_token_group(tok: str, group_size: int) -> Tuple[VectorSpace, float, 
         nums = re.findall(r"-?\d+(?:\.\d+)?", tok)
         if len(nums) == 3:
             x, y, z = map(float, nums)
-            vs = vector_from_features(loc=[x, y, z], pos="vector")
+            from latn.lexer.literal_decoder import get_active_literal_decoder
+            vs = get_active_literal_decoder().decode((x, y, z))
             vs.word = tok
             return vs, 1.0, f"vector({x},{y},{z})"
         return None, 0, ""
@@ -190,10 +191,11 @@ def process_token_group(tok: str, group_size: int) -> Tuple[VectorSpace, float, 
                         vs.word = tok.lower()
                         if inflection_type:
                             vs[inflection_type] = 1.0
-                            # Boost semantic features for comparative/superlative
+                            # Boost host-registered semantic features without
+                            # baking a domain ontology into LATN.
                             multiplier = 1.2 if inflection_type == 'comp' else 1.5
-                            semantic_features = ["scaleX", "scaleY", "scaleZ", "red", "green", "blue", "texture", "transparency"]
-                            for key in semantic_features:
+                            from latn.An_N_Space_Model.vector_dimensions import SEMANTIC_DIMENSIONS
+                            for key in SEMANTIC_DIMENSIONS:
                                 if vs[key] != 0:
                                     vs[key] = vs[key] * multiplier
                         return vs, 0.7, f"inflected-adjective({tok}→{base_adj})"
@@ -223,5 +225,3 @@ def latn_tokenize_best(sentence):
     else:
         # If no hypotheses, return empty list (shouldn't happen with proper vocabulary)
         return []
-
-

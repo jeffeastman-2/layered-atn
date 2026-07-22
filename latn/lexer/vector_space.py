@@ -2,7 +2,7 @@
 import numpy as np
 import math
 from latn.An_N_Space_Model.vector_dimensions import VECTOR_DIMENSIONS
-# --- Updated semantic vector space (6D: RGB + X/Y/Z size) ---
+# Named, extensible vector space. Host semantics are registered at startup.
 
 
 
@@ -219,20 +219,14 @@ class VectorSpace:
         # Implement hash method too
         return hash(tuple(self.vector))  # or appropriate hash
 
-def vector_from_features(pos, adverb=None, loc=None, scale=None, rot=None, color=None, word=None, number=None, texture=None, transparency=None, **semantic_dims):
+def vector_from_features(pos, adverb=None, word=None, number=None, **semantic_dims):
     vs = VectorSpace(word)
     for tag in pos.split():
         if tag in VECTOR_DIMENSIONS:
             vs[tag] = 1.0
         else:
             raise ValueError(f"Unknown POS tag '{tag}' in vector_from_features")
-    if loc: vs["locX"], vs["locY"], vs["locZ"] = loc
-    if scale: vs["scaleX"], vs["scaleY"], vs["scaleZ"] = scale
-    if rot: vs["rotX"], vs["rotY"], vs["rotZ"] = rot
-    if color: vs["red"], vs["green"], vs["blue"] = color
     if adverb is not None: vs["adv"] = adverb
-    if texture is not None: vs["texture"] = texture
-    if transparency is not None: vs["transparency"] = transparency
     if number is not None: vs["number"] = number
     
     # Handle semantic dimensions for prepositions
@@ -243,4 +237,3 @@ def vector_from_features(pos, adverb=None, loc=None, scale=None, rot=None, color
             raise ValueError(f"Unknown semantic dimension '{dim_name}' in vector_from_features")
     
     return vs
-

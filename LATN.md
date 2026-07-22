@@ -74,7 +74,7 @@ references.
 
 Layer‑1 performs lexical processing on the input sentence. It handles
 one-, two-, and three-word tokens by searching for each token in the
-vocabulary. Each token is represented as a 70+-dimensional semantic
+vocabulary. Each token is represented as an extensible named semantic
 vector encoding features such as object type, color, size, position,
 and action semantics. If not found directly, it attempts to identify
 plural noun forms and verb/adjective inflections, adding the appropriate
@@ -259,7 +259,7 @@ sentence without reprocessing prior discourse.
 LATN contains no host-specific code; a host configures it entirely through
 a small set of injection seams. Two are *substrate*: the host supplies a
 **lexicon** (its vocabulary, mapped to feature vectors) and may extend the
-**dimension schema**, adding semantic axes on top of the 70 base
+**dimension schema**, adding executable semantic axes on top of the grammatical
 dimensions. The rest are *grounding* seams, one per grounding layer. The
 **`SceneAdapter`** is the noun-phrase seam---the required bridge that
 resolves NPs and pronouns to the host's entities at Layer-2---while thin,
@@ -286,7 +286,7 @@ achieves:
 -   **Grounding** --- meaning connects directly to Scene Objects
 -   **Infinite‑Context Behavior** --- memory lives in the world model
 
-LATN ships its own unit-test suite---193 tests covering lexical analysis,
+LATN ships its own host-neutral unit-test suite covering lexical analysis,
 phrase extraction across the layers, and the injection seams (lexicon,
 dimension schema, and grounding policies)---plus an enforced import
 boundary that keeps the package free of host dependencies. Grounding,

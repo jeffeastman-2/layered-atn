@@ -11,7 +11,7 @@ def is_negation(tok): return tok is not None and tok.isa("neg")
 def is_punctuation(tok): return tok is not None and tok.isa("punct")
 def is_number(tok): return tok is not None and tok["number"] > 0.0
 def is_none(tok): return tok is None
-def is_vector(tok): return tok is not None and tok.isa("vector")
+def is_vector(tok): return tok is not None and tok.isa("literal")
 def is_quoted(tok): return tok is not None and tok.isa("quoted")
 def is_adjective_or_adverb(tok): return tok is not None and (tok.isa("adj") or tok.isa("adv"))
 def is_np_token(tok): return tok is not None and tok.isa("NP")

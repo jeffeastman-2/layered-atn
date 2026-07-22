@@ -15,6 +15,7 @@ from latn.lexer.vector_space import VectorSpace
 from latn.lexer.hypothesis import TokenizationHypothesis
 from latn.utils.debug import debug_print
 from latn.utils.spatial_validation import SpatialValidator
+from latn.lexer.spatial_policy import get_active_spatial_policy
 from latn.lexer.scene_adapter import SceneAdapter
 
 
@@ -26,7 +27,7 @@ class Layer3GroundingResult:
     resolved_object: Optional[VectorSpace] = None
     description: str = ""
     alternative_matches: List[Tuple[float, VectorSpace]] = None
-    
+
     def __post_init__(self):
         if self.alternative_matches is None:
             self.alternative_matches = []
@@ -55,8 +56,9 @@ class Layer3SemanticGrounder:
     def _validate_prep_spatial_relationships(self, pp, target_np) -> bool:
         obj1s = target_np.grounding.get('scene_objects') if target_np.grounding else None
         pp_np = pp.noun_phrase
-        if not (pp.vector.isa("spatial_location") or pp.vector.isa("spatial_proximity")):
-            return False  # Cannot validate non-spatial prepositions
+        policy = get_active_spatial_policy()
+        if not policy.applies_to(pp.vector):
+            return True  # This relationship is interpreted downstream.
         obj2s = pp_np.grounding.get('scene_objects') if pp_np.grounding else None
         if obj1s is None or obj2s is None:
             debug_print(f"❌ Cannot validate spatial relationship: missing grounding")
@@ -135,6 +137,5 @@ class Layer3SemanticGrounder:
             for token in hypothesis.tokens:
                 if token.phrase is not None and isinstance(token.phrase, PrepositionalPhrase):
                     prepositional_phrases.append(token.phrase)
-        
+
         return prepositional_phrases
-    

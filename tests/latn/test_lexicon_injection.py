@@ -38,8 +38,9 @@ def test_lexicon_is_a_dict_facade():
     assert len(lex) == 1
 
 
-def test_default_lexicon_wraps_engraf_vocabulary():
-    assert "cube" in get_active_lexicon()
+def test_default_lexicon_contains_only_core_function_vocabulary():
+    assert "the" in get_active_lexicon()
+    assert "cube" not in get_active_lexicon()
 
 
 def test_injected_lexicon_is_used_and_scoped():
@@ -66,4 +67,5 @@ def test_set_active_lexicon_reset():
     finally:
         set_active_lexicon(None)  # reset to Engraf default
     assert _first_token(NONSENSE).isa("unknown")
-    assert "cube" in get_active_lexicon()
+    assert "the" in get_active_lexicon()
+    assert "cube" not in get_active_lexicon()
