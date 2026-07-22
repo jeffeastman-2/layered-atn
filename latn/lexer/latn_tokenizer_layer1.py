@@ -11,6 +11,7 @@ from latn.lexer.vector_space import VectorSpace, vector_from_features
 from latn.lexer.hypothesis import TokenizationHypothesis
 from latn.utils.noun_inflector import singularize_noun
 from latn.utils.verb_inflector import find_root_verb
+from latn.utils.contractions import expand_contractions
 import re
 from typing import List, Tuple
 
@@ -41,8 +42,14 @@ def latn_tokenize_layer1(sentence: str) -> List[TokenizationHypothesis]:
         re.VERBOSE,
     )
     tokens = pattern.findall(sentence)
-    flat_tokens = [t[0] for t in tokens]
-    
+    raw_tokens = [t[0] for t in tokens]
+
+    # Expand contractions ("I'd" arrives split as ["I","'","d"]) into full words.
+    # Ambiguous clitics ('d, 's) yield several token lists; each becomes its own
+    # set of hypotheses, so the grammar chooses (e.g. possessive vs "is").
+    token_variants = expand_contractions(raw_tokens)
+    flat_tokens = raw_tokens
+
     # Generate all possible tokenization hypotheses
     hypotheses = []
     
@@ -94,9 +101,10 @@ def latn_tokenize_layer1(sentence: str) -> List[TokenizationHypothesis]:
                     new_description
                 )
     
-    # Start recursive generation
-    generate_hypotheses(0, [], 0.0, "")
-    
+    # Start recursive generation, once per contraction-expanded variant.
+    for flat_tokens in token_variants:
+        generate_hypotheses(0, [], 0.0, "")
+
     # Sort by confidence (descending) and return
     hypotheses.sort(key=lambda h: h.confidence, reverse=True)
     
