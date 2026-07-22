@@ -2,6 +2,9 @@ import pytest
 from latn.lexer.latn_layer_executor import LATNLayerExecutor
 
 
+pytestmark = pytest.mark.usefixtures("neutral_latn")
+
+
 def test_simple_adverb_adjective_sequence():
     """Test Layer 2 NP tokenization with simple adverb-adjective sequence: 'a very tall cylinder'"""
     executor = LATNLayerExecutor()

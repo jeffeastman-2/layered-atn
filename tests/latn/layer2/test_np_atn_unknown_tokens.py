@@ -14,6 +14,9 @@ from latn.lexer.latn_tokenizer_layer1 import latn_tokenize_layer1
 from latn.pos.noun_phrase import NounPhrase
 
 
+pytestmark = pytest.mark.usefixtures("neutral_latn")
+
+
 def test_unknown_token_after_noun_should_terminate_np():
     """Test that unknown token after noun properly terminates NP parsing."""
     

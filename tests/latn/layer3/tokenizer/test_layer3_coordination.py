@@ -1,7 +1,12 @@
+import pytest
+
 from latn.lexer.latn_layer_executor import LATNLayerExecutor
 from latn.pos.conjunction_phrase import ConjunctionPhrase
 from latn.pos.noun_phrase import NounPhrase
 from latn.pos.prepositional_phrase import PrepositionalPhrase
+
+
+pytestmark = pytest.mark.usefixtures("neutral_latn")
 
 
 
@@ -41,4 +46,3 @@ def test_coordinated_pp_with_nps():
     np = hyp.tokens[0].phrase
     str = np.printString()
     assert str == "the red cube (above {the table *and* the blue sphere} below the cylinder)", f"First token should be NP, got {hyp.tokens[0].word}"
- 

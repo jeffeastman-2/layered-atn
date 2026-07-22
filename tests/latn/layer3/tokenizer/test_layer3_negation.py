@@ -1,6 +1,11 @@
 
+import pytest
+
 from latn.lexer.latn_layer_executor import LATNLayerExecutor
 from latn.pos.prepositional_phrase import PrepositionalPhrase
+
+
+pytestmark = pytest.mark.usefixtures("neutral_latn")
 
 
 class TestLayer3Negation:

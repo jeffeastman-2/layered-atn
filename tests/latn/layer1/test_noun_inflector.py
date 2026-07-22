@@ -1,6 +1,9 @@
 import pytest
 from latn.utils.noun_inflector import singularize_noun, is_plural
 
+
+pytestmark = pytest.mark.usefixtures("neutral_latn")
+
 class TestNounInflector:
     """Test suite for the noun inflector module."""
     
@@ -270,5 +273,4 @@ class TestNounInflectorIntegration:
         except Exception as e:
             # The vocabulary system might not be fully integrated yet
             pytest.skip(f"Vocabulary integration not ready: {e}")
-
 

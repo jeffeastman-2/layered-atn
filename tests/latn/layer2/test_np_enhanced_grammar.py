@@ -40,7 +40,7 @@ def parse_np_with_latn(text):
 class TestEnhancedNPGrammar:
     """Test cases for the enhanced NP grammar supporting LATN architecture."""
     
-    def test_bare_noun_np(self):
+    def test_bare_noun_np(self, neutral_latn):
         """Test NPs that are just bare nouns."""
         test_cases = [
             "sphere",
@@ -59,7 +59,7 @@ class TestEnhancedNPGrammar:
             # Check vector has noun component
             assert result.vector["noun"] > 0, f"Vector should have noun component"
     
-    def test_adjective_initial_nps(self):
+    def test_adjective_initial_nps(self, neutral_latn):
         """Test NPs that start with adjectives."""
         test_cases = [
             ("red sphere", ["red", "sphere"]),
@@ -80,7 +80,7 @@ class TestEnhancedNPGrammar:
             assert result.vector["adj"] > 0, f"Vector should have adjective component"
             assert result.vector["noun"] > 0, f"Vector should have noun component"
     
-    def test_multiple_adjective_nps(self):
+    def test_multiple_adjective_nps(self, neutral_latn):
         """Test NPs with multiple adjectives."""
         test_cases = [
             ("big red sphere", ["big", "red", "sphere"]),
@@ -100,7 +100,7 @@ class TestEnhancedNPGrammar:
             assert result.vector["adj"] > 1, f"Vector should have multiple adjective components"
             assert result.vector["noun"] > 0, f"Vector should have noun component"
     
-    def test_adverb_initial_nps(self):
+    def test_adverb_initial_nps(self, neutral_latn):
         """Test NPs that start with adverbs modifying adjectives."""
         test_cases = [
             ("very big sphere", ["very", "big", "sphere"]),
@@ -140,7 +140,7 @@ class TestEnhancedNPGrammar:
         assert result2.vector["scaleY"] > result1.vector["scaleY"], "Very big should be bigger than just big"
         assert result2.vector["scaleZ"] > result1.vector["scaleZ"], "Very big should be bigger than just big"
     
-    def test_traditional_determiner_nps_still_work(self):
+    def test_traditional_determiner_nps_still_work(self, neutral_latn):
         """Test that traditional determiner-initial NPs still work after enhancement."""
         test_cases = [
             ("the sphere", ["the", "sphere"]),
@@ -205,7 +205,7 @@ class TestEnhancedNPGrammar:
                            result.vector["scaleZ"] != 0)
                 assert has_scale, f"'{case}' should have scale components"
                 
-    def test_latn_hypothesis_readiness(self):
+    def test_latn_hypothesis_readiness(self, neutral_latn):
         """Test that enhanced NPs are ready for LATN multi-hypothesis generation."""
         # This tests that we can parse multiple NP patterns from the same token sequence
         # Use just the NP part without additional words that would confuse the parser
@@ -245,5 +245,4 @@ class TestEnhancedNPGrammar:
         # Verify the hypotheses have different specificity levels
         hypothesis_lengths = [len(np.get_consumed_words()) for pos, np in np_hypotheses]
         assert len(set(hypothesis_lengths)) > 1, "Should have hypotheses of different lengths (specificity)"
-
 
