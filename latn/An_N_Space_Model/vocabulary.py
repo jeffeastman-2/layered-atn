@@ -49,6 +49,13 @@ FUNCTION_WORDS = {
     "our": vector_from_features("det"),
     "their": vector_from_features("det"),
 
+    # Quantifier-determiners exhibit determiner behavior in the NP grammar.
+    **{
+        word: vector_from_features("det")
+        for word in ("some", "any", "all", "each", "every",
+                     "several", "few", "both", "either", "neither")
+    },
+
     # Relation words are grammar-only in the core.
     **{
         word: vector_from_features("prep")
@@ -56,7 +63,7 @@ FUNCTION_WORDS = {
             "over", "above", "under", "below", "behind", "in front of",
             "right of", "left of", "on", "in", "at", "near", "to",
             "toward", "towards", "into", "onto", "through", "from", "by",
-            "with", "of", "as", "than", "around", "about",
+            "with", "of", "as", "than", "around", "about", "for",
         )
     },
     **{
@@ -79,6 +86,14 @@ FUNCTION_WORDS = {
     **{
         word: vector_from_features("tobe")
         for word in ("is", "are", "was", "were", "am", "be", "been", "being")
+    },
+    # Light and auxiliary verbs the grammar needs: do-support ("do you have"),
+    # the perfect auxiliary "have", and the "would like to" frame. Grammar-only
+    # here (POS, no reading) — a host supplies any semantic mapping, e.g.
+    # Driftmoor grounds "have"/"want" to purchasing.
+    **{
+        word: vector_from_features("verb")
+        for word in ("do", "does", "did", "have", "has", "had", "like")
     },
     ",": vector_from_features("punct comma"),
     ".": vector_from_features("punct period"),
