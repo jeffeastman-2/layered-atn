@@ -54,8 +54,13 @@ def unknown_words(text: str) -> List[str]:
     for tok in latn_tokenize_best(text or ""):
         if getattr(tok, "isa", None) and tok.isa("unknown"):
             word = (getattr(tok, "word", "") or "").strip()
+            # Only report genuine words -- skip stray punctuation/symbol tokens
+            # (a bare quote from quoted speech, "@", ...) which aren't vocabulary
+            # and would produce nonsense suggestions.
+            if not any(ch.isalnum() for ch in word):
+                continue
             key = word.lower()
-            if word and key not in seen:
+            if key not in seen:
                 seen.add(key)
                 out.append(word)
     return out
@@ -78,7 +83,7 @@ def suggest_words(word: str, *, n: int = 3, max_distance: int = None) -> List[st
     while "floober" matches nothing.
     """
     w = (word or "").lower()
-    if not w:
+    if not w or not any(ch.isalnum() for ch in w):
         return []
     bound = max_distance if max_distance is not None else (2 if len(w) >= 6 else 1)
     scored: List[Tuple[int, str]] = []
