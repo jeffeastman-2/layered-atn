@@ -48,19 +48,26 @@ def build_vp_atn(vp: VerbPhrase, ts: TokenStream):
     after_np.add_arc(is_conjunction_no_consume, noop, end)
     # Allow VP to end when other verbs/tobe are encountered
     after_np.add_arc(any_of(is_verb, is_tobe), noop, end)
-    
+    # A completed verb+object VP is done: any *other* trailing token -- an unknown
+    # word, a stray adverb ("now"), punctuation -- reduces to end and is left for
+    # the outer parse, instead of dead-ending the whole VP. Last arc, so the
+    # specific continuations above are always tried first.
+    after_np.add_arc(is_anything_no_consume, noop, end)
+
     # After PP: can have more PPs, adjectives, or end
     after_pp.add_arc(is_pp_token, lambda _, tok: vp.apply_pp(_extract_pp_from_token(tok)), after_pp)
     after_pp.add_arc(is_adjective, lambda _, tok: vp.apply_adjective(tok), after_adj)
     after_pp.add_arc(is_none, noop, end)
     after_pp.add_arc(is_conjunction_no_consume, noop, end)
     after_pp.add_arc(any_of(is_verb, is_tobe), noop, end)
-    
+    after_pp.add_arc(is_anything_no_consume, noop, end)   # stray trailing token -> reduce (see after_np)
+
     # After adjective complement: can have more adjectives or end
     after_adj.add_arc(is_adjective, lambda _, tok: vp.apply_adjective(tok), after_adj)
     after_adj.add_arc(is_none, noop, end)
     after_adj.add_arc(is_conjunction_no_consume, noop, end)
     after_adj.add_arc(any_of(is_verb, is_tobe), noop, end)
+    after_adj.add_arc(is_anything_no_consume, noop, end)   # stray trailing token -> reduce (see after_np)
 
     return start, end
 
