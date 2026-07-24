@@ -13,12 +13,16 @@ Refactored for clean separation of concerns:
 """
 
 from typing import List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from latn.atn.core import run_atn
 from latn.atn.np import build_np_atn
 from latn.atn.pp import build_pp_atn
 from latn.atn.sentence import build_sentence_atn
+from latn.atn.sq import build_sq_atn
 from latn.atn.vp import build_vp_atn
+from latn.lexer.token_stream import TokenStream
+from latn.pos.question_phrase import QuestionPhrase
 from latn.lexer.latn_tokenizer import LATNLayerTokenizer
 from latn.lexer.latn_tokenizer_layer1 import latn_tokenize_layer1, TokenizationHypothesis
 from latn.lexer.latn_tokenizer_layer3 import generate_pp_attachment_combinations
@@ -97,6 +101,10 @@ class Layer5Result:
     success: bool
     confidence: float
     description: str = ""
+    # Interrogative parses from the parallel SQ pass (empty for statements/
+    # commands). The host reads these to answer questions; the declarative SP
+    # path above is unaffected either way.
+    question_phrases: List["QuestionPhrase"] = field(default_factory=list)
 
 
 class LATNLayerExecutor:
@@ -402,6 +410,26 @@ class LATNLayerExecutor:
                 description=f"Layer 4 failed: {e}"
             )
 
+    def _parse_questions(self, layer4_hypotheses) -> List[QuestionPhrase]:
+        """Run the SQ ATN from the start of each layer-4 hypothesis.
+
+        SQ is a standalone parallel pass: its start state accepts only a
+        wh-word or a leading to-be, so a declarative/imperative produces no
+        QuestionPhrase and this returns []. Returns one QuestionPhrase per
+        hypothesis that parses as a question (best hypothesis first, mirroring
+        the layer-4 ranking), so the host can take the top one.
+        """
+        questions: List[QuestionPhrase] = []
+        for hyp in (layer4_hypotheses or []):
+            tokens = list(getattr(hyp, "tokens", None) or [])
+            if not tokens:
+                continue
+            ts = TokenStream(tokens)
+            q = QuestionPhrase()
+            if run_atn(*build_sq_atn(q, ts), ts, q) is not None:
+                questions.append(q)
+        return questions
+
     def execute_layer5(self, sentence: str, tokenize_only: bool = False, report: bool = False) -> Layer5Result:
         """Execute Layer 5: Sentence tokenization + execution (requires Layer 1-4).
         
@@ -431,6 +459,11 @@ class LATNLayerExecutor:
             # Execute Layer 5 sentence tokenization
             tokenizer = LATNLayerTokenizer(layer=5, atn_builder=build_sentence_atn, nonterminal_type_builder=SentencePhrase)
             layer5_hypotheses = tokenizer.latn_tokenize_layer(layer4_result.hypotheses)
+
+            # Parallel interrogative (SQ) pass -- independent of the SP pass
+            # above. It only yields a parse when the utterance leads with a
+            # wh-word or an inverted to-be, so statements/commands add nothing.
+            question_phrases = self._parse_questions(layer4_result.hypotheses)
 
             if report:
                 print(f"Layer 5 tokenization produced {len(layer5_hypotheses)} hypotheses for: '{sentence}'")
@@ -464,7 +497,8 @@ class LATNLayerExecutor:
                 grounding_results=[],
                 success=True,
                 confidence=overall_confidence,
-                description=description
+                description=description,
+                question_phrases=question_phrases,
             )
             
         except Exception as e:

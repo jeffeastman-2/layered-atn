@@ -80,3 +80,16 @@ def test_imperative_is_not_a_question():
 
 def test_declarative_is_not_a_question():
     assert _parse_sq("the box is red") is None
+
+
+# --- execute_layer5 surfaces the SQ pass on Layer5Result.question_phrases -----
+
+def test_layer5_surfaces_question_phrases():
+    result = LATNLayerExecutor().execute_layer5("what is it", tokenize_only=True)
+    assert result.question_phrases, "layer 5 should surface the SQ parse"
+    assert result.question_phrases[0].wh_word == "what"
+
+
+def test_layer5_no_question_for_command():
+    result = LATNLayerExecutor().execute_layer5("inspect the box", tokenize_only=True)
+    assert result.question_phrases == []
