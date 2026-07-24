@@ -14,7 +14,7 @@ VECTOR_DIMENSIONS = [
     "NP", "PP", "VP", "SP",
 
     # Agreement and grammatical operators.
-    "number", "singular", "plural", "conj", "or", "and", "neg",
+    "number", "singular", "plural", "first_person", "conj", "or", "and", "neg",
     "modal", "wh", "measure", "literal",
 
     # Morphology.

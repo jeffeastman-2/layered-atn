@@ -13,11 +13,13 @@ FUNCTION_WORDS = {
     "it": vector_from_features("pronoun singular"),
     "they": vector_from_features("pronoun plural"),
     "them": vector_from_features("pronoun plural"),
-    "i": vector_from_features("pronoun singular"),
-    "me": vector_from_features("pronoun singular"),
+    "i": vector_from_features("pronoun singular", first_person=1.0),
+    "me": vector_from_features("pronoun singular", first_person=1.0),
+    "mine": vector_from_features("pronoun singular", first_person=1.0),
+    "myself": vector_from_features("pronoun singular", first_person=1.0),
     "you": vector_from_features("pronoun"),
-    "we": vector_from_features("pronoun plural"),
-    "us": vector_from_features("pronoun plural"),
+    "we": vector_from_features("pronoun plural", first_person=1.0),
+    "us": vector_from_features("pronoun plural", first_person=1.0),
 
     # Degree adverbs affect vector composition in the NP grammar.
     "very": vector_from_features("adv", adverb=1.5),
@@ -41,7 +43,7 @@ FUNCTION_WORDS = {
         )
         if value > 0
     },
-    "my": vector_from_features("det"),
+    "my": vector_from_features("det", first_person=1.0),
     "your": vector_from_features("det"),
     "his": vector_from_features("det"),
     "her": vector_from_features("det"),
