@@ -83,16 +83,16 @@ def latn_tokenize_layer1(sentence: str) -> List[TokenizationHypothesis]:
                 compound_key = " ".join(tok_group).lower()
                 tok = compound_key
             
-            # Try to process this token/compound
-            processed_token, confidence_boost, process_description = process_token_group(tok, group_size)
-            
-            if processed_token is not None:
+            # Try to process this token/compound -- usually one reading, but a
+            # homograph (e.g. "leaves" = noun/verb) forks one hypothesis each.
+            for processed_token, confidence_boost, process_description in \
+                    process_token_readings(tok, group_size):
                 # Calculate confidence for this choice
                 # Use average confidence rather than sum to avoid bias toward more tokens
                 decision_confidence = current_confidence * len(current_tokens) + confidence_boost
                 new_confidence = decision_confidence / (len(current_tokens) + 1)
                 new_description = f"{description} | {process_description}" if description else process_description
-                
+
                 # Recursively generate the rest
                 generate_hypotheses(
                     token_index + group_size,
@@ -218,6 +218,76 @@ def process_token_group(tok: str, group_size: int) -> Tuple[VectorSpace, float, 
         
         # Multi-word compound not found in vocabulary - don't create unknown token
         return None, 0, ""
+
+
+_POS_TAGS = ("noun", "verb", "adj", "adv", "proper_noun", "pronoun",
+             "det", "prep", "tobe", "wh", "conj", "neg")
+
+
+def _pos_signature(vs: VectorSpace) -> frozenset:
+    """The set of part-of-speech dimensions a token carries -- its POS identity.
+    Two readings with the SAME signature (e.g. a plural noun and its singular)
+    are not a homograph worth forking; different signatures (noun vs verb) are."""
+    return frozenset(p for p in _POS_TAGS if vs[p] > 0)
+
+
+def _homograph_alternates(tok: str):
+    """Readings of a single word other than the primary one: the surface form's
+    own entry, its noun-singular, and its verb root. A homograph like "leaves"
+    (the noun "leaf" and the verb "leave") surfaces both so the grammar keeps
+    whichever parses; a plain plural surfaces only its own POS."""
+    lex = get_active_lexicon()
+    low = tok.lower()
+    out = []
+    # The surface form as its own entry -- the primary may have singularized
+    # past it (leaves -> leaf), leaving a distinct verb/other reading behind.
+    if low in lex:
+        vs = vector_from_word(low)
+        vs.word = tok
+        out.append((vs, 0.7, f"single-word({tok})"))
+    # The noun-singular of a plural, when it is a distinct in-vocabulary word.
+    singular, was_plural = singularize_noun(tok)
+    sl = singular.lower()
+    if was_plural and sl != low and sl in lex:
+        vs = vector_from_word(sl)
+        vs.word = singular
+        if vs["noun"] > 0:
+            vs = vs.copy()
+            vs["plural"] = 1.0
+        out.append((vs, 0.7, f"single-word({tok})"))
+    # The verb root (handles -ed/-ing/irregular past the noun path missed).
+    root_verb, inflection_type, found_root = find_root_verb(tok)
+    if found_root and root_verb.lower() != low:
+        vs = vector_from_word(root_verb)
+        vs.word = low
+        if inflection_type:
+            vs[inflection_type] = 1.0
+        out.append((vs, 0.6, f"inflected-verb({tok}→{root_verb})"))
+    return out
+
+
+def process_token_readings(tok: str, group_size: int):
+    """All valid readings of a token/group as ``[(vs, confidence, desc), ...]``.
+
+    The first entry is exactly what ``process_token_group`` returns (so the best
+    reading and its ranking are unchanged). For a single word that is a homograph
+    across distinct parts of speech in the active lexicon -- "leaves" as the noun
+    "leaf" vs the verb "leave" -- the distinct-POS alternates follow, and
+    ``generate_hypotheses`` forks one hypothesis per reading. A plain plural or a
+    single-POS word yields just the one reading."""
+    primary_vs, primary_conf, primary_desc = process_token_group(tok, group_size)
+    if primary_vs is None:
+        return []
+    readings = [(primary_vs, primary_conf, primary_desc)]
+    if group_size != 1:
+        return readings
+    seen = {_pos_signature(primary_vs)}
+    for vs, conf, desc in _homograph_alternates(tok):
+        sig = _pos_signature(vs)
+        if sig and sig not in seen:
+            seen.add(sig)
+            readings.append((vs, conf, desc))
+    return readings
 
 
 def latn_tokenize_best(sentence):
