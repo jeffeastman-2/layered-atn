@@ -13,8 +13,7 @@ Refactored for clean separation of concerns:
 """
 
 from copy import deepcopy
-from itertools import product
-from typing import List, Optional
+from typing import Callable, List, Optional
 from dataclasses import dataclass, field
 
 from latn.atn.core import run_atn
@@ -127,13 +126,16 @@ class LATNLayerExecutor:
     @staticmethod
     def _generate_pp_attachment_combinations(
         layer3_hypotheses: List[TokenizationHypothesis],
+        attachment_validator: Optional[Callable[[NounPhrase], bool]] = None,
+        hypothesis_validator: Optional[Callable[[TokenizationHypothesis], bool]] = None,
     ) -> List[TokenizationHypothesis]:
-        """Expand Layer 3 hypotheses with every possible PP attachment.
+        """Expand Layer 3 hypotheses, pruning invalid attachments during search.
 
         Each PP may remain as a token or attach to any preceding NP or PP. An
         attachment to a preceding PP binds to that PP's noun phrase. Attached
         PPs are removed from the token stream because their meaning is carried
-        by the target noun phrase.
+        by the target noun phrase. When validators are supplied, depth-first
+        search stops an invalid branch before constructing its descendants.
         """
         all_combinations = []
 
@@ -153,19 +155,40 @@ class LATNLayerExecutor:
                 attachment_options.append(targets)
 
             if not pp_positions:
-                all_combinations.append(hypothesis)
+                if hypothesis_validator is None or hypothesis_validator(hypothesis):
+                    all_combinations.append(hypothesis)
                 continue
 
-            for combination in product(*attachment_options):
-                new_hypothesis = deepcopy(hypothesis)
-                tokens_to_remove = set()
+            def search(current_hypothesis, option_index, tokens_to_remove):
+                if option_index == len(pp_positions):
+                    current_hypothesis.tokens = [
+                        token
+                        for i, token in enumerate(current_hypothesis.tokens)
+                        if i not in tokens_to_remove
+                    ]
+                    num_tokens = len(current_hypothesis.tokens)
+                    current_hypothesis.confidence = (
+                        hypothesis.confidence / num_tokens
+                        if num_tokens > 0
+                        else hypothesis.confidence
+                    )
+                    if (
+                        hypothesis_validator is None
+                        or hypothesis_validator(current_hypothesis)
+                    ):
+                        all_combinations.append(current_hypothesis)
+                    return
 
-                for pp_idx, target_idx in zip(pp_positions, combination):
+                pp_idx = pp_positions[option_index]
+                for target_idx in attachment_options[option_index]:
+                    branch = deepcopy(current_hypothesis)
+                    branch_removals = set(tokens_to_remove)
                     if target_idx is None:
+                        search(branch, option_index + 1, branch_removals)
                         continue
 
-                    pp_token = new_hypothesis.tokens[pp_idx]
-                    target_token = new_hypothesis.tokens[target_idx]
+                    pp_token = branch.tokens[pp_idx]
+                    target_token = branch.tokens[target_idx]
                     if target_token.isa("NP"):
                         targets = [target_token.phrase]
                     else:
@@ -181,25 +204,23 @@ class LATNLayerExecutor:
                             targets = [target_phrase.noun_phrase]
 
                     attached = False
+                    valid = True
                     for target in targets:
-                        if target is not None:
-                            target.add_prepositional_phrase(pp_token.phrase)
-                            attached = True
-                    if attached:
-                        tokens_to_remove.add(pp_idx)
+                        if target is None:
+                            continue
+                        target.add_prepositional_phrase(pp_token.phrase)
+                        attached = True
+                        if (
+                            attachment_validator is not None
+                            and not attachment_validator(target)
+                        ):
+                            valid = False
+                            break
+                    if attached and valid:
+                        branch_removals.add(pp_idx)
+                        search(branch, option_index + 1, branch_removals)
 
-                new_hypothesis.tokens = [
-                    token
-                    for i, token in enumerate(new_hypothesis.tokens)
-                    if i not in tokens_to_remove
-                ]
-                num_tokens = len(new_hypothesis.tokens)
-                new_hypothesis.confidence = (
-                    hypothesis.confidence / num_tokens
-                    if num_tokens > 0
-                    else hypothesis.confidence
-                )
-                all_combinations.append(new_hypothesis)
+            search(hypothesis, 0, set())
 
         return all_combinations
 
@@ -360,7 +381,20 @@ class LATNLayerExecutor:
             layer3_hypotheses = tokenizer.latn_tokenize_layer(layer2_result.hypotheses)
 
             # Generate PP attachment combinations to handle multiple PPs
-            layer3_hypotheses = self._generate_pp_attachment_combinations(layer3_hypotheses)
+            validate_attachments = not tokenize_only and self.layer3_grounder is not None
+            layer3_hypotheses = self._generate_pp_attachment_combinations(
+                layer3_hypotheses,
+                attachment_validator=(
+                    self.layer3_grounder.validate_attachment_target
+                    if validate_attachments
+                    else None
+                ),
+                hypothesis_validator=(
+                    self.layer3_grounder.validate_hypothesis
+                    if validate_attachments
+                    else None
+                ),
+            )
 
 
             if report:
@@ -372,8 +406,9 @@ class LATNLayerExecutor:
             
             # Layer 3 grounding - process PP attachments with spatial validation
             if not tokenize_only and self.layer3_grounder:
-                # Process PP attachment combinations with spatial validation
-                grounded_hypotheses: List[TokenizationHypothesis] = self.layer3_grounder.ground_layer3(layer3_hypotheses)
+                # Attachment hypotheses were spatially validated and pruned
+                # incrementally while they were generated.
+                grounded_hypotheses = layer3_hypotheses
                 if report:
                     print(f"Layer 3 grounding produced {len(grounded_hypotheses)} hypotheses for: '{sentence}'")
                     self.enumerate_hypotheses(grounded_hypotheses, layer="3g")

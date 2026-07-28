@@ -68,3 +68,27 @@ def test_each_pp_can_remain_free_or_attach_to_a_preceding_np_or_pp():
     assert hypothesis.tokens[0].phrase.prepositions == []
     assert hypothesis.tokens[1].phrase.noun_phrase.prepositions == []
 
+
+def test_invalid_attachment_branches_are_pruned_before_completion():
+    hypothesis = TokenizationHypothesis(
+        tokens=[
+            _phrase_token("NP", NounPhrase("we")),
+            _phrase_token("PP", _pp("over", "mountains")),
+            _phrase_token("PP", _pp("through", "woods")),
+        ],
+        confidence=1.0,
+        description="two PPs",
+    )
+    completed = []
+
+    combinations = LATNLayerExecutor._generate_pp_attachment_combinations(
+        [hypothesis],
+        attachment_validator=lambda target: False,
+        hypothesis_validator=lambda item: completed.append(item) or True,
+    )
+
+    # With no pruning this search has six completed combinations. Rejecting an
+    # attachment immediately leaves only the structurally valid all-free path.
+    assert len(completed) == 1
+    assert combinations == completed
+    assert len(combinations[0].tokens) == 3

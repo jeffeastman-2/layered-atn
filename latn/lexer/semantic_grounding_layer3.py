@@ -53,6 +53,17 @@ class Layer3SemanticGrounder:
         debug_print(f"✅ Pass 2: {len(validated_hypotheses)} spatially valid combinations")        
         return validated_hypotheses
 
+    def validate_attachment_target(self, target_np) -> bool:
+        """Validate an NP immediately after a PP is attached to it.
+
+        This is the incremental counterpart to ``ground_layer3`` used by the
+        executor's attachment search. Ungrounded NPs remain structurally valid;
+        a conjunction is valid only when each of its grounded alternatives is.
+        """
+        return target_np.evaluate_boolean_function(
+            lambda np: np.grounding is None or self.validate_grounded_np(np)
+        )
+
     def _validate_prep_spatial_relationships(self, pp, target_np) -> bool:
         obj1s = target_np.grounding.get('scene_objects') if target_np.grounding else None
         pp_np = pp.noun_phrase
@@ -99,28 +110,44 @@ class Layer3SemanticGrounder:
         x = 0    
         for hypothesis in attachment_hypotheses:
             x += 1       # for debugging
-            okay = True
-            for i, token in enumerate(hypothesis.tokens):
-                pString = token.phrase.printString() if token.phrase else "None"
-                debug_print(f"Evaluating {pString}")
-                if token.isa("NP"):
-                    okay = okay and token.phrase.evaluate_boolean_function(lambda np: (np.grounding is None) or 
-                                                                          (np.grounding is not None and
-                                                                        self.validate_grounded_np(np)))
-                elif token.isa("PP"):
-                    okay = okay and token.phrase.evaluate_boolean_function(lambda pp: (pp.noun_phrase.grounding is None) or
-                                                                    (pp.noun_phrase.grounding is not None and
-                                                                    self.validate_grounded_np(pp.noun_phrase)))
-            if okay:
-                num_tokens = len(hypothesis.tokens) 
-                hypothesis.confidence = hypothesis.confidence / num_tokens if num_tokens > 0 else hypothesis.confidence
+            if self.validate_hypothesis(hypothesis):
                 debug_print(f"✅ Hypothesis {x} spatially valid with score {hypothesis.confidence:.2f}")
-                # Merge validated PPs into their target NPs
                 validated.append(hypothesis)  # Valid
 
         # Sort by confidence (best first)
         validated.sort(key=lambda h: h.confidence, reverse=True)
         return validated
+
+    def validate_hypothesis(
+        self, hypothesis: TokenizationHypothesis, update_confidence: bool = True
+    ) -> bool:
+        """Validate one fully constructed Layer 3 attachment hypothesis."""
+        okay = True
+        for token in hypothesis.tokens:
+            phrase = token.phrase
+            debug_print(f"Evaluating {phrase.printString() if phrase else 'None'}")
+            if token.isa("NP"):
+                okay = okay and phrase.evaluate_boolean_function(
+                    lambda np: np.grounding is None or self.validate_grounded_np(np)
+                )
+            elif token.isa("PP"):
+                okay = okay and phrase.evaluate_boolean_function(
+                    lambda pp: (
+                        pp.noun_phrase.grounding is None
+                        or self.validate_grounded_np(pp.noun_phrase)
+                    )
+                )
+            if not okay:
+                return False
+
+        if update_confidence:
+            num_tokens = len(hypothesis.tokens)
+            hypothesis.confidence = (
+                hypothesis.confidence / num_tokens
+                if num_tokens > 0
+                else hypothesis.confidence
+            )
+        return True
     
     def extract_prepositional_phrases(self, layer3_hypotheses: List[TokenizationHypothesis]) -> List[PrepositionalPhrase]:
         """Extract PrepositionalPhrase objects from Layer 3 hypotheses.
