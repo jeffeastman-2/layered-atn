@@ -6,9 +6,17 @@ VERB_INFLECTION_PATTERNS = [
     # Past participle patterns (for -ed ending)
     (r"(.+)ed$", "verb_past_part", lambda m: [m.group(1), m.group(1) + "e"]),  # called -> call, named -> name
     
-    # Present participle / gerund patterns (for -ing ending) 
+    # Present participle / gerund patterns (for -ing ending)
     # Sets verb_present_part; caller should also set gerund if used nominally
     (r"(.+)ing$", "verb_present_part", lambda m: [m.group(1), m.group(1) + "e"]),  # calling -> call, naming -> name
+
+    # Third-person singular present (-s / -es). The -es candidates include the
+    # silent-e base so "leaves" -> "leave", "goes" -> "go" resolve (the noun
+    # singularizer sends "leaves" to "leaf", so the verb reading must come from
+    # here). Each candidate is still gated on being a verb in the lexicon, so a
+    # noun plural like "boxes" ("box" is a noun) is not misread as a verb.
+    (r"(.+)es$", "verb_present", lambda m: [m.group(1), m.group(1) + "e"]),  # goes -> go, leaves -> leave
+    (r"(.+)s$", "verb_present", lambda m: [m.group(1)]),                     # runs -> run
 ]
 
 # Irregular verb forms that don't follow standard patterns

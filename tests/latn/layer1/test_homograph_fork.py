@@ -36,6 +36,18 @@ def test_homograph_forks_into_both_pos():
     assert "noun" in pos and "verb" in pos, tags
 
 
+def test_homograph_derives_verb_reading_from_base():
+    # No explicit "leaves" entry: the noun reading comes from singularize
+    # (leaves->leaf), the verb reading from the -s inflection (leaves->leave).
+    from latn.utils.verb_inflector import find_root_verb
+    table = {"leaf": vf("noun singular"), "leave": vf("verb")}
+    with use_lexicon(Lexicon(table)):
+        assert find_root_verb("leaves") == ("leave", "verb_present", True)
+    tags = _pos_of_single("leaves", table)
+    pos = {p for _w, p in tags}
+    assert "noun" in pos and "verb" in pos, tags
+
+
 def test_single_reading_when_no_ambiguity():
     # Only the verb entry exists -> one reading, no spurious fork.
     tags = _pos_of_single("leaves", {"leaves": vf("verb")})
