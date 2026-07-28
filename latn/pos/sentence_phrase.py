@@ -53,7 +53,11 @@ class SentencePhrase():
         """Apply a PP token to the sentence structure."""
         if not hasattr(self, 'prepositional_phrases'):
             self.prepositional_phrases = []
-        self.prepositional_phrases.append(pp_token)
+        phrase = getattr(pp_token, "phrase", pp_token)
+        if isinstance(phrase, ConjunctionPhrase):
+            self.prepositional_phrases.extend(phrase.phrases)
+        else:
+            self.prepositional_phrases.append(phrase)
         return True
 
     def apply_tobe(self, tok):

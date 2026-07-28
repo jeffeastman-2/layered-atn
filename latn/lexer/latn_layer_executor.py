@@ -12,6 +12,8 @@ Refactored for clean separation of concerns:
 - Coordination logic → this executor (lightweight)
 """
 
+from copy import deepcopy
+from itertools import product
 from typing import List, Optional
 from dataclasses import dataclass, field
 
@@ -25,7 +27,6 @@ from latn.lexer.token_stream import TokenStream
 from latn.pos.question_phrase import QuestionPhrase
 from latn.lexer.latn_tokenizer import LATNLayerTokenizer
 from latn.lexer.latn_tokenizer_layer1 import latn_tokenize_layer1, TokenizationHypothesis
-from latn.lexer.latn_tokenizer_layer3 import generate_pp_attachment_combinations
 from latn.lexer.semantic_grounding_layer2 import Layer2SemanticGrounder, Layer2GroundingResult
 from latn.lexer.semantic_grounding_layer3 import Layer3SemanticGrounder, Layer3GroundingResult
 from latn.lexer.semantic_grounding_layer4 import Layer4SemanticGrounder, Layer4GroundingResult
@@ -122,6 +123,85 @@ class LATNLayerExecutor:
         for i, hyp in enumerate(hypotheses, 1):
             print(f"  {layer}-{i}  Tokens: {len(hyp.tokens)} | Confidence: {hyp.confidence:.3f}")
             hyp.print_tokens()
+
+    @staticmethod
+    def _generate_pp_attachment_combinations(
+        layer3_hypotheses: List[TokenizationHypothesis],
+    ) -> List[TokenizationHypothesis]:
+        """Expand Layer 3 hypotheses with every possible PP attachment.
+
+        Each PP may remain as a token or attach to any preceding NP or PP. An
+        attachment to a preceding PP binds to that PP's noun phrase. Attached
+        PPs are removed from the token stream because their meaning is carried
+        by the target noun phrase.
+        """
+        all_combinations = []
+
+        for hypothesis in layer3_hypotheses:
+            pp_positions = []
+            attachment_options = []
+
+            for i, token in enumerate(hypothesis.tokens):
+                if not token.isa("PP"):
+                    continue
+
+                pp_positions.append(i)
+                targets = [None]
+                for j, preceding_token in enumerate(hypothesis.tokens[:i]):
+                    if preceding_token.isa("NP") or preceding_token.isa("PP"):
+                        targets.append(j)
+                attachment_options.append(targets)
+
+            if not pp_positions:
+                all_combinations.append(hypothesis)
+                continue
+
+            for combination in product(*attachment_options):
+                new_hypothesis = deepcopy(hypothesis)
+                tokens_to_remove = set()
+
+                for pp_idx, target_idx in zip(pp_positions, combination):
+                    if target_idx is None:
+                        continue
+
+                    pp_token = new_hypothesis.tokens[pp_idx]
+                    target_token = new_hypothesis.tokens[target_idx]
+                    if target_token.isa("NP"):
+                        targets = [target_token.phrase]
+                    else:
+                        target_phrase = target_token.phrase
+                        if isinstance(target_phrase, ConjunctionPhrase):
+                            targets = [
+                                phrase.noun_phrase
+                                for phrase in target_phrase.phrases
+                                if isinstance(phrase, PrepositionalPhrase)
+                                and phrase.noun_phrase is not None
+                            ]
+                        else:
+                            targets = [target_phrase.noun_phrase]
+
+                    attached = False
+                    for target in targets:
+                        if target is not None:
+                            target.add_prepositional_phrase(pp_token.phrase)
+                            attached = True
+                    if attached:
+                        tokens_to_remove.add(pp_idx)
+
+                new_hypothesis.tokens = [
+                    token
+                    for i, token in enumerate(new_hypothesis.tokens)
+                    if i not in tokens_to_remove
+                ]
+                num_tokens = len(new_hypothesis.tokens)
+                new_hypothesis.confidence = (
+                    hypothesis.confidence / num_tokens
+                    if num_tokens > 0
+                    else hypothesis.confidence
+                )
+                all_combinations.append(new_hypothesis)
+
+        return all_combinations
 
     def execute_layer1(self, sentence: str, report=False) -> Layer1Result:
         """Execute Layer 1: Multi-hypothesis lexical tokenization.
@@ -280,7 +360,7 @@ class LATNLayerExecutor:
             layer3_hypotheses = tokenizer.latn_tokenize_layer(layer2_result.hypotheses)
 
             # Generate PP attachment combinations to handle multiple PPs
-            layer3_hypotheses = generate_pp_attachment_combinations(layer3_hypotheses) 
+            layer3_hypotheses = self._generate_pp_attachment_combinations(layer3_hypotheses)
 
 
             if report:

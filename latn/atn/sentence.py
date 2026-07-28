@@ -6,6 +6,7 @@ from latn.pos.sentence_phrase import SentencePhrase
 
 def build_sentence_atn(sent: SentencePhrase, ts: TokenStream):
     start = ATNState("SENTENCE-START")
+    leading_pp = ATNState("SENTENCE-LEADING-PP")
     predicate = ATNState("SENTENCE-PREDICATE")
     adjective_phrase = ATNState("SENTENCE-ADJECTIVE-PHRASE")
     adjective = ATNState("SENTENCE-ADJECTIVE")
@@ -14,9 +15,16 @@ def build_sentence_atn(sent: SentencePhrase, ts: TokenStream):
     end = ATNState("SENTENCE-END")
 
     # Optional subject NP at start
+    start.add_arc(is_pp_token, lambda _, tok: sent.apply_prepositional_phrase(tok), leading_pp)
     start.add_arc(is_np_token, lambda _, tok: sent.apply_subject_token(tok), predicate)
     start.add_arc(is_quoted, lambda _, tok: sent.store_definition_word(tok), predicate) 
     start.add_arc(is_anything_no_consume, noop,  predicate) 
+
+    # English allows route/location adjuncts before the subject:
+    # "Over the mountains and through the woods, we go."
+    leading_pp.add_arc(is_pp_token, lambda _, tok: sent.apply_prepositional_phrase(tok), leading_pp)
+    leading_pp.add_arc(is_np_token, lambda _, tok: sent.apply_subject_token(tok), predicate)
+    leading_pp.add_arc(is_vp_token, lambda _, tok: sent.apply_predicate_token(tok), end)
 
     predicate.add_arc(is_vp_token, lambda _, tok: sent.apply_predicate_token(tok), end)
     predicate.add_arc(is_none, noop, end)  # Allow empty predicate
