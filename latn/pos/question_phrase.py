@@ -13,14 +13,28 @@ and nothing about what the answer is: grounding and answering belong to the host
 from latn.lexer.vector_space import VectorSpace
 
 
+def _is_referential(np) -> bool:
+    """True if an NP can serve as a question's subject/focus -- it has a noun
+    head or is a pronoun/proper noun. A copula's bare adjective complement
+    ("are [red]") is wrapped as a noun_phrase but is NOT referential, so it must
+    not be mistaken for the subject."""
+    if np is None:
+        return False
+    return bool(getattr(np, "noun", None)
+                or getattr(np, "pronoun", None)
+                or getattr(np, "proper_noun", None))
+
+
 class QuestionPhrase:
     def __init__(self):
         self.vector = VectorSpace()
         self.wh_word = None          # "what"/"where"/... or None for a yes/no
         self.is_yesno = False        # True when led by an inverted to-be/aux
         self.focus = None            # the queried NP (subject of the question)
+        self.attribute = None        # queried property NP ("what COLOR is the arch")
         self.predicate = None        # optional predicate VP
         self.prepositional_phrases = []   # e.g. "on the table"
+        self._focus_is_bare = False  # focus came from a bare NP, not a VP object
 
     # --- ATN actions ---
     def apply_wh(self, tok):
@@ -37,9 +51,11 @@ class QuestionPhrase:
         self._absorb_vp(tok)
 
     def apply_focus_token(self, token):
-        """A bare NP after the lead is the queried focus/subject."""
+        """A bare NP after the lead is the queried focus/subject (provisionally;
+        a following copula's object can promote this to the ATTRIBUTE)."""
         if self.focus is None:
             self.focus = getattr(token, "phrase", None) or token
+            self._focus_is_bare = True
 
     def apply_predicate_token(self, token):
         """A predicate VP. A copular/auxiliary VP folds the queried subject
@@ -53,8 +69,16 @@ class QuestionPhrase:
         if vp is None:
             return
         obj = getattr(vp, "noun_phrase", None)
-        if obj is not None and self.focus is None:
-            self.focus = obj
+        if _is_referential(obj):
+            if self.focus is None:
+                self.focus = obj
+            elif self._focus_is_bare and self.attribute is None:
+                # "what color is the arch": the bare NP after the wh ("color")
+                # was the queried ATTRIBUTE; the copula's object ("the arch") is
+                # the subject the host reads that attribute off of.
+                self.attribute = self.focus
+                self.focus = obj
+                self._focus_is_bare = False
         if self.predicate is None:
             self.predicate = vp
         # A copular VP swallows trailing PPs into itself ("is the box [on the
@@ -80,4 +104,5 @@ class QuestionPhrase:
 
     def __repr__(self):
         return (f"Question(wh={self.wh_word!r}, yesno={self.is_yesno}, "
-                f"focus={self.focus}, preps={len(self.prepositional_phrases)})")
+                f"attribute={self.attribute}, focus={self.focus}, "
+                f"preps={len(self.prepositional_phrases)})")

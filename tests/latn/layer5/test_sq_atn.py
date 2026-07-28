@@ -56,6 +56,31 @@ def test_who_question():
     assert q.focus is not None
 
 
+def test_wh_attribute_question_splits_attribute_from_subject():
+    # "what color is the box": color is the queried ATTRIBUTE, box the subject.
+    q = _parse_sq("what color is the box")
+    assert q is not None
+    assert q.wh_word == "what"
+    assert q.attribute is not None and getattr(q.attribute, "noun", "") == "color"
+    assert _focus_noun(q) == "box"
+
+
+def test_plain_wh_has_no_attribute():
+    # "what is the box": no intervening attribute noun -> focus is the subject.
+    q = _parse_sq("what is the box")
+    assert q is not None
+    assert q.attribute is None
+    assert _focus_noun(q) == "box"
+
+
+def test_wh_subject_question_is_not_an_attribute():
+    # "what boxes are red": boxes is the subject, red an adjective complement --
+    # not an attribute question (nothing referential follows the copula).
+    q = _parse_sq("what boxes are red")
+    assert q is not None
+    assert q.attribute is None
+
+
 # --- yes/no questions -------------------------------------------------------
 
 def test_yesno_copular_captures_focus_noun():

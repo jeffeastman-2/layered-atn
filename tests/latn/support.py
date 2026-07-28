@@ -73,6 +73,8 @@ def build_test_lexicon() -> Lexicon:
         "circle": vf("noun singular"),
         "octahedron": vf("noun singular"),
         "light house": vf("noun singular"),
+        "color": vf("noun singular"),
+        "size": vf("noun singular"),
         "red": vf("adj", test_quality=1.0),
         "blue": vf("adj", test_quality=1.0),
         "green": vf("adj", test_quality=1.0),
