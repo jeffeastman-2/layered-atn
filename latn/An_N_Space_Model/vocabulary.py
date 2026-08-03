@@ -78,7 +78,7 @@ FUNCTION_WORDS = {
     "not": vector_from_features("neg"),
     "no": vector_from_features("neg"),
     **{
-        word: vector_from_features("verb modal")
+        word: vector_from_features("verb modal aux")
         for word in ("can", "could", "may", "might", "must", "shall", "should", "will", "would")
     },
     **{
@@ -94,9 +94,10 @@ FUNCTION_WORDS = {
     # here (POS, no reading) — a host supplies any semantic mapping, e.g.
     # Driftmoor grounds "have"/"want" to purchasing.
     **{
-        word: vector_from_features("verb")
+        word: vector_from_features("verb aux")
         for word in ("do", "does", "did", "have", "has", "had", "like")
     },
+    "there": vector_from_features("expletive"),
     ",": vector_from_features("punct comma"),
     ".": vector_from_features("punct period"),
     "?": vector_from_features("punct question"),

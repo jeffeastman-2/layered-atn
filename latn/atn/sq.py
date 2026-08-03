@@ -15,7 +15,7 @@ from latn.lexer.token_stream import TokenStream
 from latn.atn.core import ATNState, noop
 from latn.utils.predicates import (
     is_wh, is_tobe, is_verb, is_np_token, is_vp_token, is_pp_token,
-    is_adjective, is_none, is_anything_no_consume,
+    is_adjective, is_none, is_anything_no_consume, is_expletive,
 )
 from latn.pos.question_phrase import QuestionPhrase
 
@@ -25,8 +25,22 @@ def build_sq_atn(q: QuestionPhrase, ts: TokenStream):
     body = ATNState("SQ-BODY")
     end = ATNState("SQ-END")
 
-    # Only a wh-word or a leading to-be verb opens an interrogative.
+    def is_inverted_auxiliary(tok):
+        if tok is None or not is_vp_token(tok) or not tok.isa("aux"):
+            return False
+        vp = getattr(tok, "phrase", None)
+        subject = getattr(vp, "noun_phrase", None)
+        return bool(subject is not None and (
+            getattr(subject, "noun", None)
+            or getattr(subject, "pronoun", None)
+            or getattr(subject, "proper_noun", None)
+        ))
+
+    # A wh-word, inverted to-be, or a modal/auxiliary VP with an embedded
+    # subject opens an interrogative.
     start.add_arc(is_wh, lambda _, tok: q.apply_wh(tok), body)
+    start.add_arc(is_inverted_auxiliary,
+                  lambda _, tok: q.mark_inverted_auxiliary(tok), body)
     start.add_arc(is_tobe, lambda _, tok: q.mark_yesno(tok), body)
 
     # Capture the first NP as the queried focus, fold in a predicate VP (which
@@ -42,6 +56,7 @@ def build_sq_atn(q: QuestionPhrase, ts: TokenStream):
     body.add_arc(is_tobe, lambda _, tok: None, body)
     body.add_arc(is_verb, lambda _, tok: None, body)
     body.add_arc(is_adjective, lambda _, tok: None, body)
+    body.add_arc(is_expletive, lambda _, tok: None, body)
     body.add_arc(is_none, noop, end)
     body.add_arc(is_anything_no_consume, noop, end)
 

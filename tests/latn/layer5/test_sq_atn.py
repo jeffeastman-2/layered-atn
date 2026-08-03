@@ -56,6 +56,11 @@ def test_who_question():
     assert q.focus is not None
 
 
+def test_wh_word_is_canonical_across_sentence_case():
+    assert _parse_sq("Who is it").wh_word == "who"
+    assert _parse_sq("Where is the box").wh_word == "where"
+
+
 def test_wh_attribute_question_splits_attribute_from_subject():
     # "what color is the box": color is the queried ATTRIBUTE, box the subject.
     q = _parse_sq("what color is the box")
@@ -95,6 +100,28 @@ def test_yesno_focus_and_relation():
     q = _parse_sq("is the box on the table")
     # The prepositional relation rides along for the host to resolve.
     assert q.prepositional_phrases, "expected the 'on the table' relation captured"
+
+
+def test_modal_inversion_preserves_subject_and_predicate_object_focus():
+    q = _parse_sq("can I inspect the box")
+    assert q is not None and q.is_yesno
+    assert q.subject is not None
+    assert "i" in q.subject.printString().lower()
+    assert _focus_noun(q) == "box"
+
+
+def test_do_support_preserves_subject_and_predicate_object_focus():
+    q = _parse_sq("do they inspect the box")
+    assert q is not None and q.is_yesno
+    assert q.subject is not None
+    assert "they" in q.subject.printString().lower()
+    assert _focus_noun(q) == "box"
+
+
+def test_existential_there_focuses_following_np():
+    q = _parse_sq("is there a box")
+    assert q is not None and q.is_yesno
+    assert _focus_noun(q) == "box"
 
 
 # --- the zero-regression property: non-questions must NOT parse as SQ --------

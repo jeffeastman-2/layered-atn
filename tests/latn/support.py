@@ -38,6 +38,9 @@ def build_test_lexicon() -> Lexicon:
         "is": vf("tobe"),
         "are": vf("tobe"),
         "was": vf("tobe"),
+        "can": vf("verb modal aux"),
+        "do": vf("verb aux"),
+        "there": vf("expletive"),
         "what": vf("wh"),
         "who": vf("wh"),
         "where": vf("wh"),
@@ -90,6 +93,7 @@ def build_test_lexicon() -> Lexicon:
         "call": vf("verb", test_intent=1.0),
         "name": vf("verb", test_intent=1.0),
         "it": vf("pronoun singular"),
+        "i": vf("pronoun singular", first_person=1.0),
         "they": vf("pronoun plural"),
         "them": vf("pronoun plural"),
     }

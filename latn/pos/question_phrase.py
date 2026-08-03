@@ -31,6 +31,8 @@ class QuestionPhrase:
         self.wh_word = None          # "what"/"where"/... or None for a yes/no
         self.is_yesno = False        # True when led by an inverted to-be/aux
         self.focus = None            # the queried NP (subject of the question)
+        self.subject = None          # grammatical subject under aux/modal inversion
+        self.auxiliary = None        # leading inverted auxiliary/modal VP
         self.attribute = None        # queried property NP ("what COLOR is the arch")
         self.predicate = None        # optional predicate VP
         self.prepositional_phrases = []   # e.g. "on the table"
@@ -39,7 +41,8 @@ class QuestionPhrase:
     # --- ATN actions ---
     def apply_wh(self, tok):
         """A leading wh-word: record which wh it is."""
-        self.wh_word = getattr(tok, "word", None)
+        word = getattr(tok, "word", None)
+        self.wh_word = word.lower() if isinstance(word, str) else word
         self.vector += tok
 
     def mark_yesno(self, tok):
@@ -49,6 +52,17 @@ class QuestionPhrase:
         self.is_yesno = True
         self.vector += tok
         self._absorb_vp(tok)
+
+    def mark_inverted_auxiliary(self, tok):
+        """Capture ``can I`` / ``do they`` without mistaking the subject for
+        the queried object. The following predicate VP supplies the focus."""
+        self.is_yesno = True
+        self.vector += tok
+        vp = getattr(tok, "phrase", None)
+        self.auxiliary = vp
+        subject = getattr(vp, "noun_phrase", None) if vp is not None else None
+        if _is_referential(subject):
+            self.subject = subject
 
     def apply_focus_token(self, token):
         """A bare NP after the lead is the queried focus/subject (provisionally;
@@ -104,5 +118,6 @@ class QuestionPhrase:
 
     def __repr__(self):
         return (f"Question(wh={self.wh_word!r}, yesno={self.is_yesno}, "
+                f"subject={self.subject}, "
                 f"attribute={self.attribute}, focus={self.focus}, "
                 f"preps={len(self.prepositional_phrases)})")

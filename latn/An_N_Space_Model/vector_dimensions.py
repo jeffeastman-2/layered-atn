@@ -15,7 +15,7 @@ VECTOR_DIMENSIONS = [
 
     # Agreement and grammatical operators.
     "number", "singular", "plural", "first_person", "conj", "or", "and", "neg",
-    "modal", "wh", "measure", "literal",
+    "modal", "aux", "expletive", "wh", "measure", "literal",
 
     # Morphology.
     "verb_past", "verb_present", "verb_past_part", "verb_present_part", "gerund",
