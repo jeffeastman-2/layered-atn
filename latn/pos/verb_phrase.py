@@ -10,6 +10,7 @@ class VerbPhrase():
         self.noun_phrase = None
         self.prepositions = []
         self.adjective_complements = []  # Changed to list for multiple adjectives
+        self.complement_phrases = []     # Structural NP/Adj complements for hosts
         self.amount = None  # For handling measurements like "45 degrees"
 
     def __repr__(self):
@@ -59,6 +60,7 @@ class VerbPhrase():
 
     def apply_adjective(self, tok):
         self.adjective_complements.append(tok.word)
+        self.complement_phrases.append(getattr(tok, "phrase", None) or tok)
         debug_print(f"✅ VP applying adjective complement: {tok.word}")
         debug_print(f"✅ Current adjective complements: {self.adjective_complements}")
 
