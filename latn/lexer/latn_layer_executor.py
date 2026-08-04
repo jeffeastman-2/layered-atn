@@ -362,7 +362,7 @@ class LATNLayerExecutor:
         """
         # First execute Layer 2 (which includes Layer 1-2)
         # Layer 3 spatial validation requires grounded NP tokens from Layer 2
-        layer2_result = self.execute_layer2(sentence, report=report)
+        layer2_result = self.execute_layer2(sentence, tokenize_only=tokenize_only, report=report)
 
         if not layer2_result.success:
             return Layer3Result(
@@ -462,7 +462,7 @@ class LATNLayerExecutor:
         try:
             # Execute Layer 3 first (which includes Layer 1 and 2)
             # Layer 4 should always start from Layer 3 grounding results, not tokenization
-            layer3_result = self.execute_layer3(sentence, report=report)
+            layer3_result = self.execute_layer3(sentence, tokenize_only=tokenize_only, report=report)
             
             if not layer3_result.success:
                 return Layer4Result(
@@ -558,7 +558,7 @@ class LATNLayerExecutor:
         """
         try:
             # Execute Layer 4 first (which includes Layers 1-3)
-            layer4_result = self.execute_layer4(sentence, report=report)
+            layer4_result = self.execute_layer4(sentence, tokenize_only=tokenize_only, report=report)
 
             if not layer4_result.success:
                 return Layer5Result(

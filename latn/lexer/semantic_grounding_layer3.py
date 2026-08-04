@@ -17,6 +17,7 @@ from latn.utils.debug import debug_print
 from latn.utils.spatial_validation import SpatialValidator
 from latn.lexer.spatial_policy import get_active_spatial_policy
 from latn.lexer.scene_adapter import SceneAdapter
+from latn.lexer.grounding_promise import GroundingPromise, force_grounding
 
 
 @dataclass
@@ -65,13 +66,19 @@ class Layer3SemanticGrounder:
         )
 
     def _validate_prep_spatial_relationships(self, pp, target_np) -> bool:
-        obj1s = target_np.grounding.get('scene_objects') if target_np.grounding else None
+        target_grounding = force_grounding(target_np)
+        obj1s = target_grounding.get('scene_objects') if target_grounding else None
         pp_np = pp.noun_phrase
         policy = get_active_spatial_policy()
         if not policy.applies_to(pp.vector):
             return True  # This relationship is interpreted downstream.
-        obj2s = pp_np.grounding.get('scene_objects') if pp_np.grounding else None
-        if obj1s is None or obj2s is None:
+        pp_grounding = force_grounding(pp_np)
+        obj2s = pp_grounding.get('scene_objects') if pp_grounding else None
+        if not obj1s or not obj2s:
+            # A deferred referent that is absent *now* is not a structural
+            # parse failure.  Execution may force it after an earlier clause.
+            if isinstance(target_grounding, GroundingPromise) or isinstance(pp_grounding, GroundingPromise):
+                return True
             debug_print(f"❌ Cannot validate spatial relationship: missing grounding")
             return False
         matches = SpatialValidator.validate_spatial_relationship(pp.vector, obj1s, obj2s)
@@ -81,7 +88,7 @@ class Layer3SemanticGrounder:
             if match:   # valid match => keep the object in the grounding
                 new_grounding.append(obj)
         if new_grounding:
-            target_np.grounding['scene_objects'] = new_grounding
+            target_grounding['scene_objects'] = new_grounding
             return True
         else:
             return False  # No valid grounding left

@@ -14,6 +14,7 @@ from itertools import product
 from latn.pos.noun_phrase import NounPhrase
 from latn.lexer.scene_adapter import SceneAdapter, GroundedEntity
 from latn.lexer.hypothesis import TokenizationHypothesis
+from latn.lexer.grounding_promise import GroundingPromise
 
 
 @dataclass
@@ -49,6 +50,45 @@ class Layer2SemanticGrounder:
     
     def __init__(self, scene_model: SceneAdapter):
         self.scene_model = scene_model
+
+    def _promise(self, np: NounPhrase) -> GroundingPromise:
+        """Build the complete grounding computation for an NP.
+
+        Keep PP-bearing NPs whole: when this promise is forced after a world
+        change, Layer 3 can re-check both referents and their relationship.
+        """
+        template = copy.deepcopy(np)
+        template.grounding = None
+
+        def resolve():
+            if template.vector.isa("pronoun"):
+                objects = self.scene_model.resolve_pronoun(template.pronoun) or []
+                if template.vector.isa("singular"):
+                    objects = objects[:1]
+                return {
+                    "scene_objects": list(objects),
+                    "confidence": 1.0 if objects else 0.0,
+                    "type": "pronoun_resolution",
+                    "multiple_objects": template.vector.isa("plural"),
+                }
+            candidates = self.scene_model.resolve_noun_phrase(template) or []
+            if template.vector.isa("plural"):
+                objects = [obj for _confidence, obj in candidates]
+                confidence = (
+                    sum(score for score, _obj in candidates) / len(candidates)
+                    if candidates else 0.0
+                )
+            else:
+                objects = [candidates[0][1]] if candidates else []
+                confidence = candidates[0][0] if candidates else 0.0
+            return {
+                "scene_objects": objects,
+                "confidence": confidence,
+                "type": "scene_object",
+                "multiple_objects": template.vector.isa("plural"),
+            }
+
+        return GroundingPromise(self.scene_model, resolve)
 
     def ground_pronoun(self, np: NounPhrase) -> Layer2GroundingResult:
         """Ground a pronoun NounPhrase using specialized pronoun resolution.
@@ -94,13 +134,8 @@ class Layer2SemanticGrounder:
             
             # Add grounding information to the NounPhrase
             grounded_np = copy.deepcopy(np)
-            grounding_info = {
-                'scene_objects': resolved_object_list,  # Store all resolved objects
-                'confidence': confidence,
-                'type': 'pronoun_resolution',
-                'pronoun_type': pronoun_type
-            }
-            grounded_np.grounding = grounding_info               
+            grounded_np.grounding = self._promise(np)
+            grounded_np.grounding.force()
             return Layer2GroundingResult(
                 success=True,
                 confidence=confidence,
@@ -160,13 +195,8 @@ class Layer2SemanticGrounder:
                     alternative_matches = candidates[1:]  # Store alternatives excluding best match            
             # Add grounding information directly to the NounPhrase
             grounded_np = copy.deepcopy(np)
-            grounding_info = {
-                'scene_objects': resolved_object_list,  # Store all resolved objects
-                'confidence': avg_confidence,
-                'type': 'scene_object',
-                'multiple_objects': np.vector.isa("plural")
-            }           
-            grounded_np.grounding = grounding_info            
+            grounded_np.grounding = self._promise(np)
+            grounded_np.grounding.force()
             return Layer2GroundingResult(
                 success=True,
                 confidence=avg_confidence,
@@ -248,11 +278,13 @@ class Layer2SemanticGrounder:
                             grounded_np=grounded_np)])
                 else:
                     # No grounding found
+                    deferred_np = copy.deepcopy(original_np)
+                    deferred_np.grounding = self._promise(original_np)
                     np_grounding_options.append([GroundingOption(
                         original_np=original_np, 
                         confidence=0.5, 
                         resolved_objects=[], 
-                        grounded_np=None)])
+                        grounded_np=deferred_np)])
 
             # Pass 2: Generate combinatorial hypotheses
             if np_grounding_options:
